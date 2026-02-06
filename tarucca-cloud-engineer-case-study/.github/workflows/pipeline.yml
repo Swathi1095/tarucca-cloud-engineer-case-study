@@ -1,12 +1,9 @@
-# Tarucca IoT Data Processing Pipeline
-
 name: IoT Data Processing Pipeline
 
 on:
   push:
     paths:
       - 'data/incoming/*.csv'
-  
   workflow_dispatch:
 
 jobs:
@@ -16,29 +13,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      
+
       - name: Run tests
         run: pytest tests/ -v
-      
+
       - name: Build Docker image
         run: docker build -t tarucca-processor .
-      
+
       - name: Run processor in container
         run: docker run -v ${{ github.workspace }}/data:/app/data tarucca-processor
-      
+
       - name: Upload processed results
         uses: actions/upload-artifact@v4
         with:
           name: processed-data
           path: data/processed/
-      
+
       - name: Pipeline status
         run: echo "✅ Pipeline completed successfully"
