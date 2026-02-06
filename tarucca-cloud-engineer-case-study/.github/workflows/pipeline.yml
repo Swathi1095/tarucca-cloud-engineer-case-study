@@ -1,0 +1,65 @@
+# Tarucca IoT Data Processing Pipeline
+# GitHub Actions workflow for automated event-driven processing
+#
+# TODO: Complete this CI/CD pipeline
+#
+# Requirements:
+# 1. Trigger when CSV files are added to data/incoming/
+# 2. Build Docker image
+# 3. Run processor in container
+# 4. Upload processed results as artifacts
+# 5. Run tests with pytest
+#
+# Hints:
+# - Use actions/checkout@v4 to clone repo
+# - Use actions/setup-python@v4 for Python
+# - Use actions/upload-artifact@v4 for results
+# - Use docker build and docker run commands
+
+name: IoT Data Processing Pipeline
+
+on:
+  # TODO: Configure trigger for CSV files in data/incoming/
+  # Hint: Use push.paths filter
+  push:
+    paths:
+      - 'data/incoming/*.csv'
+  
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  process-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # TODO: Add remaining steps
+      # 
+      # Step 1: Set up Python
+      # - uses: actions/setup-python@v4
+      #   with:
+      #     python-version: '3.11'
+      #
+      # Step 2: Install dependencies
+      # - run: pip install -r requirements.txt
+      #
+      # Step 3: Run tests
+      # - run: pytest tests/ -v
+      #
+      # Step 4: Build Docker image
+      # - run: docker build -t tarucca-processor .
+      #
+      # Step 5: Run processor in container
+      # - run: docker run -v ${{ github.workspace }}/data:/app/data tarucca-processor
+      #
+      # Step 6: Upload processed results
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: processed-data
+      #     path: data/processed/
+      
+      - name: Pipeline status
+        run: echo "✅ Pipeline completed successfully"

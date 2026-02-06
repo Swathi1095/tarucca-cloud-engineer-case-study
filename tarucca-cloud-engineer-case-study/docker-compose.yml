@@ -1,0 +1,13 @@
+# Local testing with Docker Compose
+# Run with: docker-compose up
+
+version: '3.8'
+
+services:
+  processor:
+    build: .
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python -m src.processor
