@@ -5,7 +5,7 @@ Processes solar panel sensor data and generates analytical metrics.
 
 This is the main file you need to complete for the case study.
 
-Author: [Your Name Here]
+Author: Swathi Nadakuditi
 """
 
 import csv
@@ -17,170 +17,201 @@ from typing import Dict, List, Optional
 
 
 def validate_data(record: dict) -> bool:
-    """
-    Validate sensor readings are within acceptable physical ranges.
-    
-    TODO: Implement validation logic
-    
-    Acceptable ranges for solar panel sensors:
-    - voltage: 18V - 32V (24V nominal system with tolerance)
-    - current: 0A - 12A (10A max with headroom)
-    - temperature: -10°C to 80°C (operational range)
-    - power: Should be >= 0 (calculated from V*I)
-    
-    Args:
-        record: Dictionary with keys: voltage, current, temperature, power
-        
-    Returns:
-        True if all readings are valid, False otherwise
-        
-    Example:
-        >>> validate_data({'voltage': 24.5, 'current': 5.2, 'temperature': 35.0, 'power': 127.4})
-        True
-        >>> validate_data({'voltage': 50.0, 'current': 5.2, 'temperature': 35.0, 'power': 260.0})
-        False
-    """
-    
-    # TODO: Implement validation logic here
-    # Hint: Check each sensor reading against the ranges above
-    # Return False if ANY reading is outside acceptable range
-    
-    pass
+    try:
+        voltage = float(record["voltage"])
+        if voltage < 18 or voltage > 32:
+            return False
+
+        current = float(record["current"])
+        if current < 0 or current > 12:
+            return False
+
+        temperature = float(record["temperature"])
+        if temperature < -10 or temperature > 80:
+            return False
+
+        power = float(record["power"])
+        if power < 0:
+            return False
+
+        return True
+
+    except:
+        return False
+
 
 
 def calculate_metrics(data: List[dict]) -> Dict:
-    """
-    Calculate comprehensive metrics from sensor data.
-    
-    TODO: Implement metric calculations
-    
-    Required metrics:
-    - For voltage, current, temperature:
-        - average (mean)
-        - minimum
-        - maximum
-        - standard deviation (for voltage only)
-    
-    - Energy metrics:
-        - total_energy_kwh: Sum of (power * time_interval) converted to kWh
-          Assumption: Readings are 5 minutes apart
-        - peak_power_hour: Timestamp of the hour with highest average power
-    
-    Args:
-        data: List of dictionaries, each with validated sensor readings
-        
-    Returns:
-        Dictionary with structure:
-        {
-            "voltage": {"avg": float, "min": float, "max": float, "std": float},
-            "current": {"avg": float, "min": float, "max": float},
-            "temperature": {"avg": float, "min": float, "max": float},
-            "total_energy_kwh": float,
-            "peak_power_hour": str (ISO format timestamp)
-        }
-        
-    Hints:
-    - Use statistics.mean(), min(), max(), statistics.stdev()
-    - For energy: power (W) * time (hours) = energy (Wh), then convert to kWh
-    - For peak hour: group readings by hour, find hour with max average power
-    """
-    
-    # TODO: Implement metric calculations here
-    
-    metrics = {
-        "voltage": {},
-        "current": {},
-        "temperature": {},
-        "total_energy_kwh": 0.0,
-        "peak_power_hour": None
+    # Create empty lists to store values
+    voltages = []
+    currents = []
+    temperatures = []
+    powers = []
+
+    # Fill the lists with values from each record
+    for record in data:
+        voltages.append(record["voltage"])
+        currents.append(record["current"])
+        temperatures.append(record["temperature"])
+        powers.append(record["power"])
+
+    # Basic statistics
+    voltage_avg = statistics.mean(voltages)
+    voltage_min = min(voltages)
+    voltage_max = max(voltages)
+
+    # Standard deviation only if more than 1 value
+    if len(voltages) > 1:
+        voltage_std = statistics.stdev(voltages)
+    else:
+        voltage_std = 0
+
+    current_avg = statistics.mean(currents)
+    current_min = min(currents)
+    current_max = max(currents)
+
+    temperature_avg = statistics.mean(temperatures)
+    temperature_min = min(temperatures)
+    temperature_max = max(temperatures)
+
+    # Energy calculation (kWh)
+    total_energy_kwh = 0
+    interval_hours = 5 / 60  
+
+    for p in powers:
+        total_energy_kwh += (p * interval_hours) / 1000
+
+    # Peak power hour
+    hourly_power = {}
+
+    for record in data:
+        ts = datetime.fromisoformat(record["timestamp"])
+        hour = ts.replace(minute=0, second=0, microsecond=0)
+
+        if hour not in hourly_power:
+            hourly_power[hour] = []
+
+        hourly_power[hour].append(record["power"])
+
+    # Find hour with highest average power
+    peak_hour = None
+    highest_avg = -1
+
+    for hour, values in hourly_power.items():
+        avg_power = statistics.mean(values)
+        if avg_power > highest_avg:
+            highest_avg = avg_power
+            peak_hour = hour
+
+    return {
+        "voltage": {
+            "avg": voltage_avg,
+            "min": voltage_min,
+            "max": voltage_max,
+            "std": voltage_std
+        },
+        "current": {
+            "avg": current_avg,
+            "min": current_min,
+            "max": current_max
+        },
+        "temperature": {
+            "avg": temperature_avg,
+            "min": temperature_min,
+            "max": temperature_max
+        },
+        "total_energy_kwh": total_energy_kwh,
+        "peak_power_hour": peak_hour.isoformat()
     }
-    
-    return metrics
+
+
 
 
 def process_sensor_data(input_file: str, output_dir: str = "data/processed") -> dict:
-    """
-    Main processing function - orchestrates the entire data pipeline.
-    
-    TODO: Complete this function
-    
-    Pipeline steps:
-    1. Read CSV file using csv.DictReader
-    2. Validate each record using validate_data()
-    3. Collect valid records, count invalid ones
-    4. Calculate metrics using calculate_metrics()
-    5. Generate output JSON file
-    6. Save to output directory
-    7. Return processing results
-    
-    Args:
-        input_file: Path to input CSV file
-        output_dir: Directory where processed JSON should be saved
-        
-    Returns:
-        Dictionary with processing results:
-        {
-            "input_file": str,
-            "output_file": str,
-            "processed_at": str (ISO timestamp),
-            "status": "success" | "error",
-            "records_processed": int,
-            "records_invalid": int,
-            "metrics": dict (from calculate_metrics),
-            "error": str (optional, only if status is "error")
-        }
-        
-    Error Handling:
-    - If file doesn't exist: return status="error" with error message
-    - If CSV is malformed: return status="error" with error message
-    - If ALL records are invalid: return status="error"
-    - Log errors but continue processing valid records
-    
-    Example output JSON:
-    {
-        "input_file": "solar_data_20250115_140523.csv",
-        "output_file": "solar_data_20250115_140523_processed.json",
-        "processed_at": "2025-01-15T14:07:45",
-        "status": "success",
-        "records_processed": 285,
-        "records_invalid": 3,
-        "metrics": { ... }
-    }
-    """
-    
-    # Initialize result structure
     result = {
-        'input_file': Path(input_file).name,
-        'output_file': None,
-        'processed_at': datetime.now().isoformat(),
-        'status': 'pending',
-        'records_processed': 0,
-        'records_invalid': 0,
-        'metrics': {}
+        "input_file": Path(input_file).name,
+        "output_file": None,
+        "processed_at": datetime.now().isoformat(),
+        "status": "pending",
+        "records_processed": 0,
+        "records_invalid": 0,
+        "metrics": {}
     }
-    
-    # TODO: Implement the processing logic
-    # 
-    # Suggested structure:
-    # 
-    # try:
-    #     1. Check if input file exists
-    #     2. Read CSV file
-    #     3. Validate and collect valid records
-    #     4. If no valid records, return error
-    #     5. Calculate metrics
-    #     6. Generate output filename
-    #     7. Save JSON to output directory
-    #     8. Update result with success status
-    # except Exception as e:
-    #     result['status'] = 'error'
-    #     result['error'] = str(e)
-    # 
-    # return result
-    
-    # YOUR CODE HERE
-    
-    return result
+
+    try:
+        # 1. Check if file exists
+        input_path = Path(input_file)
+        if not input_path.exists():
+            result["status"] = "error"
+            result["error"] = "Input file does not exist"
+            return result
+
+        valid_records = []
+        invalid_count = 0
+
+        # 2. Read CSV file
+        with open(input_path, "r") as f:
+            reader = csv.DictReader(f)
+
+            # 3. Loop through each row
+            for row in reader:
+                try:
+                    # Convert values to float
+                    row["voltage"] = float(row["voltage"])
+                    row["current"] = float(row["current"])
+                    row["temperature"] = float(row["temperature"])
+                    row["power"] = float(row["power"])
+                except:
+                    invalid_count += 1
+                    continue
+
+                # 4. Validate row
+                if validate_data(row):
+                    valid_records.append(row)
+                else:
+                    invalid_count += 1
+
+        # 5. If no valid records
+        if len(valid_records) == 0:
+            result["status"] = "error"
+            result["records_invalid"] = invalid_count
+            result["error"] = "All records invalid"
+            return result
+
+        # 6. Calculate metrics
+        metrics = calculate_metrics(valid_records)
+
+        # 7. Save JSON output
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_filename = input_path.stem + "_processed.json"
+        output_path = output_dir / output_filename
+
+        with open(output_path, "w") as f:
+            json.dump({
+                "input_file": result["input_file"],
+                "output_file": output_filename,
+                "processed_at": result["processed_at"],
+                "status": "success",
+                "records_processed": len(valid_records),
+                "records_invalid": invalid_count,
+                "metrics": metrics
+            }, f, indent=4)
+
+        # 8. Update result
+        result["status"] = "success"
+        result["output_file"] = output_filename
+        result["records_processed"] = len(valid_records)
+        result["records_invalid"] = invalid_count
+        result["metrics"] = metrics
+
+        return result
+
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)
+        return result
 
 
 def main():
